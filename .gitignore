@@ -4,3 +4,5 @@
 .Ruserdata
 .DS_Store
 .Rapp.history
+clean_covid.rds
+google.rds
