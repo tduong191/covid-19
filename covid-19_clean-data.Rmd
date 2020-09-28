@@ -1,0 +1,145 @@
+---
+title: "covid-19 clean data"
+author: "Trang Duong"
+date: "9/28/2020"
+output: html_document
+---
+<style type="text/css">
+.main-container {
+  max-width: 1500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+```{css horizontal scrolling, echo = FALSE}
+pre, code {white-space:pre !important; overflow-x:scroll !important}
+html { overflow-x: scroll; }
+```
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+## Packages
+
+```{r}
+
+library(googlesheets4)
+library(lubridate)
+library(magrittr)
+library(stringr)
+library(purrr)
+library(tidyr)
+library(dplyr)
+library(tidyverse)
+```
+
+## Functions
+
+These 2 functions are needed to deal with the fact that some free text is in the
+`date_onset` variable:
+
+```{r}
+null2na <- function(x) {
+  if (is.null(x)) return(NA)
+  x
+}
+```
+
+```{r}
+unlist_dates <- function(x) {
+  x %>%
+    as.data.frame() %>%
+    t() %>%
+    as.data.frame() %>%
+    pull(V1)
+}
+```
+
+## Data
+```{r}
+gs4_deauth()
+
+covid_df <- data.frame(covid_confirmed) %>% 
+  rename(id ='MCB',
+         type_of_observation = 'Loại.giám.sát',
+         full_name = 'Họ.và.tên',
+         age = 'Tuổi',
+         age_group = 'Nhóm.tuổi',
+         gender = 'Giới',
+         address = 'Địa.chỉ.nơi.ở..nơi.lưu.trú',
+         province_report = "Nơi.phát.hiện",
+         profession = "Nghề.nghiệp",
+         commune = "Xã.phường",
+         district = "Huyện.quận",
+         province = "Tỉnh.tp",
+         phone_number = "Số.điện.thoại",
+         phone_tracking = "Đã.tracking.điện.thoại",
+         nationality = "Quốc.tịch",
+         infected_type = "Loại.ca.bệnh.đích",
+         sus_infect_area = "Vùng.dịch",
+         sus_infec_country = "Quốc.gia.có.dịch",
+         flight_seat = "Chuyến.bay..số.ghế.",
+         quarantine_entry = "Cách.ly.sau.nhập.cảnh",
+         infector = "Tên.ca.bệnh.đích",
+         infector_relationship = "Mối.quan.hệ.với.ca.bệnh.đích",
+         contact_type = "Phân.loại.tiếp.xúc",
+         date_last_contact = "Ngày.tiếp.xúc.cuối.cùng",
+         contact_description = "Mô.tả.hoàn.cảnh.tiếp.xúc",
+         admission_date = "Ngày.vào.viện",
+         treating_unit = "Cơ.sở.điều.trị",
+         quarantine_type = "Loại.cách.ly",
+         quarantine_start_date = "Ngày.bắt.đầu.cách.ly",
+         quarantine_end_date = "Ngày.chấm.dứt.cách.ly",
+         onset_date = "Ngày.khởi.phát",
+         symptom = "Có.triệu.chứng",
+         onset_symptom = "Triệu.chứng.khởi.phát",
+         number_of_test = "Số.lần.xét.nghiệm",
+         comorbidity = "Bệnh.nền"
+         ) %>%
+  mutate(
+        type_of_observation = recode(type_of_observation, 
+                                     "Ca xác định" = "confirmed_case",
+                                     "Ca nghi ngờ" = "suspected_case"
+                                     ),
+        # infection_area = recode(infection_area,
+        #                         )
+        quarantine_type = recode(quarantine_type, 
+                                 "Cơ sở điều trị" = "treating unit",
+                                 "Tại nhà" = "at home",
+                                 "Cơ sở tập trung" = "quarantine center"
+                                   ),
+        infected_type =  recode(infected_type,
+                                 "Ổ dịch nước ngoài" = "imported",
+                                 "Ca xác định"  = "confirmed case",
+                                 "Ổ dịch nội địa" = "inland",
+                                 "Ca tiếp xúc" = "contact",
+                                 "Ca nghi ngờ" = "suspected"),
+        
+        gender= recode(gender, 
+                       Nam = "male", 
+                       Nữ = "female"),
+        age_group = recode(age_group, 
+                           "1.Từ 1-5" = "1. From 1-5",
+                           "2.Từ 6-15" = "2.From 6-15",
+                           "3.Từ 16-25" = "3.From 16-25",
+                           "4.Từ 26-40" = "4.From 26-40",
+                           "5.Từ 41-60" = "5.From 41-60",
+                           "6.Từ 61-70" = "6.From 61-70",
+                           "7.Trên 70" = "7.From 70"),
+        symptom =  recode(symptom,
+                          "Có" = "Yes",
+                          "Không" = "No")) %>%
+   mutate(date_last_contact = as.Date(as.numeric(date_last_contact), origin = "1899-12-30")) %>%
+   mutate(onset_date = as.Date(as.numeric(onset_date), origin = "1899-12-30")) 
+```
+
+```{r}
+covid_df %>%
+  mutate_at(c("infector", "age_group", "symptom", "comorbidity"), map_chr, paste, collapse = " | ") %>% 
+  write.csv2("~/Dropbox/Covid-19/covid-19/Covid-19_data.csv", quote = FALSE, row.names = FALSE)
+
+saveRDS(covid_df, "~/Dropbox/Covid-19/covid-19/covid_df.rds")
+```
