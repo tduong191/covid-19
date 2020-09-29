@@ -97,7 +97,45 @@ covid_df <- data.frame(covid_confirmed) %>%
          symptom = "Có.triệu.chứng",
          onset_symptom = "Triệu.chứng.khởi.phát",
          number_of_test = "Số.lần.xét.nghiệm",
-         comorbidity = "Bệnh.nền"
+         comorbidity = "Bệnh.nền",
+         sample1 = "Ngày.lấy.mẫu.1",
+         sample2 = "Ngày.lấy.mẫu.2",
+         sample3 = "Ngày.lấy.mẫu.3",
+         sample4 = "Ngày.lấy.mẫu.4",
+         sample5 = "Ngày.lấy.mẫu.5",
+         sample6 = "Ngày.lấy.mẫu.6",
+         sample7 = "Ngày.lấy.mẫu.7",
+         sample8 = "Ngày.lấy.mẫu.8",
+         sample9 = "Ngày.lấy.mẫu.9",
+         sample10 = "Ngày.lấy.mẫu.10",
+         sample11 = "Ngày.lấy.mẫu.11",
+         sample12 = "Ngày.lấy.mẫu.12",
+         sample13 = "Ngày.lấy.mẫu.13",
+         sample14 = "Ngày.lấy.mẫu.14",
+         sample15 = "Ngày.lấy.mẫu.15",
+         sample16 = "Ngày.lấy.mẫu.16",
+         sample17 = "Ngày.lấy.mẫu.17",
+         sample18 = "Ngày.lấy.mẫu.18",
+         sample19 = "Ngày.lấy.mẫu.19",
+         result1 = "KQXN.1",
+         result2 = "KQXN.2",
+         result3 = "KQXN.3",
+         result4 = "KQXN.4",
+         result5 = "KQXN.5",
+         result6 = "KQXN.6",
+         result7 = "KQXN.7",
+         result8 = "KQXN.8",
+         result9 = "KQXN.9",
+         result10 = "KQXN.10",
+         result11 = "KQXN.11",
+         result12 = "KQXN.12",
+         result13 = "KQXN.13",
+         result14 = "KQXN.14",
+         result15 = "KQXN.15",
+         result16 = "KQXN.16",
+         result17 = "KQXN.17",
+         result18 = "KQXN.18",
+         result19 = "KQXN.19"
          ) %>%
   mutate(
         type_of_observation = recode(type_of_observation, 
@@ -131,9 +169,83 @@ covid_df <- data.frame(covid_confirmed) %>%
                            "7.Trên 70" = "7.From 70"),
         symptom =  recode(symptom,
                           "Có" = "Yes",
-                          "Không" = "No")) %>%
+                          "Không" = "No"),
+        result1 = recode(result1,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+        result2 = recode(result2,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+        result3 = recode(result3,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+          result4 = recode(result4,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+          result5 = recode(result5,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+          result6 = recode(result6,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+          result7 = recode(result7,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result8 = recode(result8,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+          result9 = recode(result9,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result10 = recode(result10,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result11 = recode(result11,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result12 = recode(result12,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result13 = recode(result13,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result14 = recode(result14,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result15 = recode(result15,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result16 = recode(result16,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result17 = recode(result17,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result18 = as.character(result18),
+            result18 = recode(result18,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive"),
+            result19 = as.character(result19),
+            result19 = recode(result19,
+                         "Âm tính" = "negative",
+                         "Dương tính" = "positive")) %>%
    mutate(date_last_contact = as.Date(as.numeric(date_last_contact), origin = "1899-12-30")) %>%
-   mutate(onset_date = as.Date(as.numeric(onset_date), origin = "1899-12-30")) 
+   mutate(onset_date = as.Date(as.numeric(onset_date), origin = "1899-12-30")) %>%
+   mutate(sample7 = as.Date(sample7, origin = "1899-12-30")) %>%
+   mutate(sample8 = as.Date(sample8, origin = "1899-12-30")) %>%
+   mutate(sample9 = as.Date(sample9, origin = "1899-12-30")) %>%
+   mutate(sample10 = as.Date(sample10, origin = "1899-12-30")) %>%
+   mutate(sample11 = as.Date(sample11, origin = "1899-12-30")) %>%
+   mutate(sample12 = as.Date(sample12, origin = "1899-12-30")) %>%
+   mutate(sample13 = as.Date(sample13, origin = "1899-12-30")) %>%
+   mutate(sample14 = as.Date(sample14, origin = "1899-12-30")) %>%
+   mutate(sample15 = as.Date(sample15, origin = "1899-12-30")) %>%
+   mutate(sample16 = as.Date(sample16, origin = "1899-12-30")) %>%
+   mutate(sample17 = as.Date(sample17, origin = "1899-12-30")) %>%
+   mutate(sample18 = as.Date(sample18, origin = "1899-12-30")) %>%
+   mutate(sample19 = as.Date(sample19, origin = "1899-12-30")) 
+
+
 ```
 
 ```{r}
