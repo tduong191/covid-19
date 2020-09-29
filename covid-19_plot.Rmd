@@ -1,0 +1,288 @@
+---
+title: "clean_covid-19_confirmed"
+author: "Trang Duong"
+date: "9/16/2020"
+output: html_document
+---
+---
+
+```{css, echo=FALSE}
+pre, code {white-space:pre !important; overflow-x:auto}
+```
+```{r general options, include = FALSE}
+knitr::knit_hooks$set(
+  margin1 = function(before, options, envir) {
+    if (before) par(mgp = c(1.5, .5, 0), bty = "n", plt = c(.105, .89, .13, .97)) # plt = c(.105, .97, .13, .97))
+    else NULL
+  },
+  margin2 = function(before, options, envir) {
+    if (before) par(mgp = c(1.5, .5, 0), bty = "n", plt = c(.105, .97, .13, .97)) # plt = c(.105, .97, .13, .97))
+    else NULL
+  },
+  margin3 = function(before, options, envir) {
+    if (before) par(mgp = c(1.5, .5, 1), bty = "n", plt = c(.1, .4, .13, .97))
+    else NULL
+  },
+  margin4 = function(before, options, envir) {
+    if (before) par(mgp = c(1.5, .5, 0), bty = "n", plt = c(.105, .97, .18, .95))
+    else NULL
+  },
+  prompt = function(before, options, envir) {
+    options(prompt = if (options$engine %in% c("sh", "bash")) "$ " else "> ")
+  })
+knitr::opts_chunk$set(margin1 = TRUE, message = FALSE, warning = FALSE,
+                      prompt = FALSE, comment = "##", collapse = FALSE,
+                      cache = FALSE, autodep = TRUE,
+                      dev.args = list(pointsize = 11), fig.height = 3.5,
+#                      fig.width = 4.24725,
+                      fig.width = 4.5,
+                      fig.retina = 2, fig.align = "center")
+options(width = 263)
+l <- "en_US.UTF-8"
+Sys.setenv(LANGAGE = l)
+Sys.setlocale(locale = l)
+Sys.setlocale("LC_MESSAGES", l)
+```
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+## Packages
+
+The packages used in this analysis:
+
+```{r}
+library(fitdistrplus)
+library(incidence)
+library(EpiEstim)
+library(mvtnorm)
+library(plotrix)
+library(car)
+# packages from the tidyverse:
+library(lubridate)
+library(stringr)
+library(purrr)
+library(tidyr)
+library(magrittr) # after tidyr to overload extract()
+library(dplyr) # safer to load last
+```
+
+## Data sets
+
+The line listing of cases:
+
+```{r}
+n_ll <- readRDS("~/Dropbox/Covid-19/covid-19/covid_df.rds") %>% 
+  mutate(positive = as_date(ifelse(result1, sample1,
+                                   ifelse(result2, sample2,
+                                          ifelse(result3, sample3,
+                                                 ifelse(result4, sample4,
+                                                        ifelse(result5, sample5,
+                                                               ifelse(result6, sample6,
+                                                                      ifelse(result7, sample7,
+                                                                             ifelse(result8, sample8,
+                                                                                    ifelse(result9, sample9,
+                                                                                           ifelse(result10, sample10,
+                                                                                                  ifelse(result11, sample11,
+                                                                                                         ifelse(result12, sample12,
+                                                                                                                ifelse(result13, sample13,
+                                                                                                                       ifelse(result14, sample14,
+                                                                                                                              ifelse(result15, sample15,
+                                                                                                                                     ifelse(result16, sample16,
+                                                                                                                                            ifelse(result17, sample17,
+                                                                                                                                                   ifelse(result18, sample18,
+                                                                                                                                                          sample19)))))))))))))))))))
+                                                                                           , #make sure that the date are in the same format
+         entry2onset = as.integer(onset_date - date_last_contact),
+         #UPDATE: different formats
+         admin2disch = as.integer(date_of_discharge - admission_date),
+         admin2onset = as.integer(onset_date - admission_date))
+```
+
+## Utilitary functions
+
+### Tuning some functions
+
+Histograms:
+
+```{r}
+hist2 <- function(...) hist(main = NA, yaxs = "i", ...)
+```
+
+Polygons:
+
+```{r}
+polygon2 <- function(...) polygon(border = NA, ...)
+```
+
+Plots:
+
+```{r}
+plot2 <- function(...) plot(xaxs = "i", yaxs = "i", ...)
+```
+
+Arrows:
+
+```{r}
+arrows2 <- function(...) arrows(length = .05, angle = 90, code = 3, ...)
+```
+
+
+### Background of figures
+
+The starting dates of each period:
+
+```{r}
+periods <- c(
+  hubei   = ymd(20200124),
+  march15 = ymd(20200315),
+  march21 = ymd(20200321),
+  april1  = ymd(20200401),
+  april23 = ymd(20200423),
+  may2    = ymd(20200502)
+)
+```
+
+The colors for the background:
+
+```{r}
+bg <- RColorBrewer::brewer.pal(length(periods) - 1, "YlOrBr")
+```
+
+Inverting the last two colors (in order to account for the after-lockdown period):
+
+```{r}
+l <- length(bg)
+bg <- c(bg[-c(l - 1, l)], bg[l], bg[l - 1])
+```
+
+The function that plots the background:
+
+```{r}
+plot_layout <- function(ylab = "reproductive number", ylim = c(0, 4), ...) {
+  plot2(ymd(20200301), 0, type = "n", xlab = NA, ylab = ylab,
+        xlim = c(ymd(20200101) - .5, ymd(20200501) + .5), ylim = ylim,  ...)
+  for(i in 1:(length(periods) - 1)) {
+    rect(periods[i] - .5, ylim[1], periods[i + 1] - .5, ylim[2], col = bg[i], border = NA)
+  }
+}
+```
+
+### Polygons of cumulated cases
+
+A function that makes the polygons of the cumulative numbers of local transmission:
+
+```{r}
+plgn <- function(df, xinf = ymd(20200502), ...) {
+  x <- rep(c(df[[1]], xinf), each = 2)
+  y <- c(0, rep(df[[2]], each = 2), 0)
+  polygon(c(x, x[1]), c(y, y[1]), ...)
+}
+```
+
+
+Variables
+``` {r}
+imported <- covid_df %>%
+  filter(infection_type == "imported") %>%
+  group_by(quarantine_type == "quarantine center") %>%
+  #how do I deal with 44 unknown variables
+  tally() %>%
+  pull(n)
+
+local <- covid_df %>%
+  filter(infection_type != "imported") %>%
+  group_by(is.na(infector) == FALSE) %>%
+  tally() %>%
+  pull(n)
+```
+
+
+The plot:
+
+``` {r}
+col <- c("gray93", "grey", "#3182bd", "#9ecae1")
+numbers <- c(local, imported)
+barplot(matrix(numbers, length(numbers)), col = col, axes = FALSE, xaxs = "i", yaxs = "i")
+axis(4)
+```
+
+### The timeline of cases
+Local transmission:
+
+``` {r}
+local <- covid_df %>%
+  filter(!is.na(admission_date), infection_type!= "imported") %>%
+  group_by(admission_date, infection_type) %>%
+  tally() %>%
+  ungroup() %>%
+  pivot_wider(names_from = infection_type, values_from = n) %>%
+  mutate_if(is.integer,replace_na, 0L) %>%
+  mutate_if(is.integer, cumsum) %>%
+  mutate(admission_date = admission_date - .5 ,#why - .5?,
+        `domestic outbreak` = `confirmed case` + inland + contact)
+local
+```
+
+The plot:
+
+```{r fig.width = 1.75 * 4.24725, margin1 = FALSE, margin2 = TRUE}
+plot_layout("cases (n)", c(0, 110))
+plgn(local[, c("admission_date", "domestic outbreak")], col = col[1])
+plgn(local[, c("admission_date", "contact")], col = col[2])
+abline(v = periods[-c(1, length(periods))] - .5, col = bg[-1])
+# adding the imported cases:
+par(new = TRUE)
+covid_df %>% 
+  filter(infection_type == "imported") %>% 
+  mutate(quarantine_type = ifelse(quarantine_type == "quarantine center", "at home", "treating unit")) %>% 
+  group_by(last_contact_date, quarantine_type) %>% 
+  tally() %>% 
+  pivot_wider(names_from = quarantine_type, values_from = n) %>% 
+  left_join(data.frame(last_contact_date = seq(ymd(20200101), ymd(20200501), 1)), ., "last_contact_date") %>% 
+  mutate(`no isolation` = ifelse(is.na(`no isolation`) & !is.na(isolation), 0, `no isolation`)) %>% # this last step is needed for the superposition in the barplot that follows
+  select(-last_contact_date) %>% 
+  t() %>% 
+  barplot(col = col[3:4], space = 0, axes = FALSE, ylim = c(0, 110), xaxs = "i", ann = FALSE)
+# the legend:
+rect(0, 56, 52, 110, col = "white")
+#rect(0, 56, 57, 110, col = "white")
+l1 <- legend("topleft", legend = c("isolated at entry", "isolated after entry"),
+             fill = c(rev(col)), title = expression(bold(" Imported cases:")), title.adj = 0, bty = "n")
+l2 <- legend(l1$rect$left, with(l1$rect, top - h),
+             legend = c("direct secondary infections", "subsequent secondary infections"),
+             fill = c("grey", "gray93"), title = expression(bold(" Cumulative domestic transmissions:")),
+             title.adj = 0, bty = "n")
+# Grid to help positionning elements:
+if(FALSE) {
+  abline(v = seq(0, 300, 10))
+  abline(h = seq(0, 120, 10))
+}
+draw.circle2 <- function(...) draw.circle(radius = 1.5, col = "black", ...)
+text2 <- function(...) text(adj = .5, cex = .8, col = "white", font = 2, ...)
+x <- 30
+y <- 8
+draw.circle2(x, y)
+text2(x, y, "1")
+x <- 67.5
+y <- 18
+draw.circle2(x, y)
+text2(x, y, "2")
+x <- 77
+y <- 33
+draw.circle2(x, y)
+text2(x, y, "B")
+x <- 85
+y <- 60
+draw.circle2(x, y)
+text2(x, y, "H")
+x <- 85
+y <- 67
+draw.circle2(x, y)
+text2(x, y, "T")
+x <- 97
+y <- 100
+draw.circle2(x, y)
+text2(x, y, "M")
+box(bty = "o")
+```
