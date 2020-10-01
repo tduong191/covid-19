@@ -86,7 +86,8 @@ n_ll <- readRDS("~/Dropbox/Covid-19/covid-19/covid_df.rds") %>%
                                                                                                   ifelse(result11, sample11,
                                                                                                          ifelse(result12, sample12,
                                                                                                                 ifelse(result13, sample13,
-                                                                                                                       ifelse(result14, sample14,
+                                                                                                          
+                                                                                                                                    ifelse(result14, sample14,
                                                                                                                               ifelse(result15, sample15,
                                                                                                                                      ifelse(result16, sample16,
                                                                                                                                             ifelse(result17, sample17,
