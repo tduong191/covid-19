@@ -62,7 +62,7 @@ unlist_dates <- function(x) {
 ```{r}
 gs4_deauth()
 
-covid_df <- data.frame(covid_confirmed) %>% 
+covid_df <- data.frame(covid_confirmed[-c(1056:1062),]) %>% 
   rename(id ='MCB',
          type_of_observation = 'Loại.giám.sát',
          full_name = 'Họ.và.tên',
@@ -96,7 +96,7 @@ covid_df <- data.frame(covid_confirmed) %>%
          onset_date = "Ngày.khởi.phát",
          symptom = "Có.triệu.chứng",
          onset_symptom = "Triệu.chứng.khởi.phát",
-         number_of_test = "Số.lần.xét.nghiệm",
+         #number_of_test = "Số.lần.xét.nghiệm",
          comorbidity = "Bệnh.nền",
          sample1 = "Ngày.lấy.mẫu.1",
          sample2 = "Ngày.lấy.mẫu.2",
@@ -234,6 +234,12 @@ covid_df <- data.frame(covid_confirmed) %>%
    mutate(onset_date = as.Date(as.numeric(onset_date), origin = "1899-12-30")) %>%
    mutate(date_of_discharge = as.Date(date_of_discharge, origin = "1899-12-30")) %>%
    mutate(admission_date = as.Date(admission_date, origin = "1899-12-30")) %>%
+   mutate(sample1 = as.Date(sample1, origin = "1899-12-30"),
+          sample2 = as.Date(sample2, origin = "1899-12-30"),
+          sample3 = as.Date(sample3, origin = "1899-12-30"),
+          sample4 = as.Date(sample4, origin = "1899-12-30"),
+          sample5 = as.Date(sample5, origin = "1899-12-30"),
+          sample6 = as.Date(sample6, origin = "1899-12-30")) %>% 
    mutate(sample7 = as.Date(sample7, origin = "1899-12-30")) %>%
    mutate(sample8 = as.Date(sample8, origin = "1899-12-30")) %>%
    mutate(sample9 = as.Date(sample9, origin = "1899-12-30")) %>%
