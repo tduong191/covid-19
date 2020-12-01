@@ -1,0 +1,99 @@
+---
+title: "imported_first_contact"
+output: html_document
+---
+#Packages
+```{r}
+library(lubridate)
+library(magrittr)
+library(stringr)
+library(purrr)
+library(tidyr)
+library(dplyr)
+library(tidyverse)
+library(ggvis)
+library(EpiContactTrace)
+```
+
+#Read data
+```{r}
+line_listing <- readRDS("~/Dropbox/Covid-19/line_listing.rds")
+data_fc<- line_listing %>% 
+  select(id, origin_of_infection, quarantine, cluster, last_contact, contact_id, date_of_onset, date_of_quarantine, date_of_admission, date_of_discharge, ends_with(as.character(1:10)))
+```
+
+#F1 imported cases
+##F0 did not quarantine at entry
+I make 2 assumptions about the F1_imported cases from F0 who did not quarantine at entry.
+  1. the first contact of F1_imported is the last contact of F0. Since F0's infector is unknown, F0's arrival date (last_contact with the abroad infector) would be F1's first contact.
+  2. the last contact of F1_imported (if NA) is F0's quarantine date, because when F0 is quarantined, we can assume that there is no more transmission by F0.
+
+```{r}
+#imported cases
+imported <- data_fc %>% 
+  filter(origin_of_infection == "imported") 
+
+#imported cases that are not quarantined at entry
+imported_no_entry <- imported$id[imported$quarantine == "none"] 
+
+
+#the cases infected by imported cases that are not quarantined at entry
+infected_no_entry <- data_fc$id[data_fc$contact_id %in% imported_no_entry]
+
+#assume that the first contact of infected_no_entry is the last_contact of imported_no_entry
+t.imported_no_entry <- data_fc[c(which(data_fc$id %in% imported_no_entry)),] 
+t.infected_no_entry <- data_fc[c(which(data_fc$id %in% infected_no_entry)),] 
+
+
+imported_first_contact <-t.infected_no_entry %>% 
+  left_join(t.imported_no_entry, by = c("contact_id" = "id"), suffix = c("_infected", "_imported")) %>% 
+  select(id, contact_id, last_contact_imported, last_contact_infected, date_of_quarantine_infected, date_of_quarantine_imported) %>% 
+  dplyr::rename(first_contact_infected = `last_contact_imported`) %>% 
+  mutate(last_contact_infected = if_else(is.na(last_contact_infected), date_of_quarantine_imported, last_contact_infected)) %>%  #if last_contact is NA, we assume date_of_quarantine_imported is the last_contact_infected 
+  mutate(infected_interval = last_contact_infected - first_contact_infected)
+```
+
+##F0 did quarantine at entry
+If F0 is quarantine at entry, we can assume that there can only be transmission within the quarantine camps if F0 infects F1.
+```{r}
+#imported cases that are quarantined at entry
+imported_yes_entry <- imported$id[imported$quarantine == "at entry"] 
+
+#the cases infected by imported cases that are quarantined at entry
+infected_yes_entry <- data_fc$id[data_fc$contact_id %in% imported_yes_entry]
+
+t.imported_yes_entry <- data_fc[c(which(data_fc$id %in% imported_yes_entry)),] 
+t.infected_yes_entry <- data_fc[c(which(data_fc$id %in% infected_yes_entry)),] 
+
+yes_entry <- t.infected_yes_entry %>% 
+  left_join(t.imported_yes_entry, by = c("contact_id" = "id"), suffix = c("_infected", "_imported")) %>% 
+  mutate(first_contact_infected = last_contact_infected) %>% 
+   select(id, contact_id, first_contact_infected, last_contact_infected, last_contact_imported, date_of_onset_infected, date_of_onset_imported, date_of_quarantine_infected, date_of_quarantine_imported, date_of_admission_infected, date_of_admission_imported) 
+
+#NB79 and NB80 is mother and son on the same flight from London to Vietnam, so we don't know the first contact
+yes_entry[yes_entry$id=="NB79", "first_contact_infected"] <- NA
+yes_entry[yes_entry$id=="NB80", "first_contact_infected"] <- NA
+
+
+#NB240 got infected by NB166 family in Bangkok
+yes_entry[yes_entry$id=="NB240", "first_contact_infected"] <- as.Date("2020-03-19")
+yes_entry[yes_entry$id=="NB240", "last_contact_infected"] <- as.Date("2020-03-19")
+
+#NB216, NB217, NB218, NB173 - quarantine in the same room
+yes_entry[yes_entry$id=="NB216", "last_contact_infected"] <- as.Date("2020-03-31") #NB173 was admitted on 2020-03-31
+yes_entry[yes_entry$id=="NB217", "last_contact_infected"] <- as.Date("2020-03-31")
+yes_entry[yes_entry$id=="NB218", "last_contact_infected"] <- as.Date("2020-03-31")
+yes_entry[yes_entry$id=="NB216", "first_contact_infected"] <- as.Date("2020-03-25") 
+
+#question about NB180 and NB228
+yes_entry
+
+```
+
+#Writing to disk:
+```{r}
+imported_first_contact %>% 
+  write.csv2("~/Dropbox/Covid-19/imported_first_contact.csv", quote = FALSE, row.names = FALSE)
+saveRDS(imported_first_contact, "~/Dropbox/Covid-19/imported_first_contact.rds")
+```
+
